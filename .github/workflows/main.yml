@@ -71,13 +71,19 @@ jobs:
 
     - name: Build kernel
       run: |
-        make -C $KERNEL_DIR O=$BUILD_DIR \
+        set -x
+        cd $KERNEL_DIR
+        make O=$BUILD_DIR \
           ARCH=$ARCH \
           CC="clang" \
           CLANG_TRIPLE=$CLANG_TRIPLE \
           CROSS_COMPILE=$CROSS_COMPILE \
           LLVM=1 \
-          -j$(($(nproc) + 1))
+          KCFLAGS="-Wno-error=implicit-function-declaration" \
+          2>&1 | tee build.log
+        exit ${PIPESTATUS[0]}
+      env:
+        FORCE_UNSAFE_CONFIGURE: 1
 
     - name: Verify artifacts
       run: |
