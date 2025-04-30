@@ -71,23 +71,23 @@ jobs:
 
     - name: Build kernel
       run: |
-        set -eo pipefail
-        cd $KERNEL_DIR
-        make O=$BUILD_DIR \
+        make -C $KERNEL_DIR O=$BUILD_DIR \
           ARCH=$ARCH \
           CC="clang" \
+          LD=ld.lld \
+          AR=llvm-ar \
+          NM=llvm-nm \
+          STRIP=llvm-strip \
+          OBJCOPY=llvm-objcopy \
+          OBJDUMP=llvm-objdump \
           CLANG_TRIPLE=$CLANG_TRIPLE \
           CROSS_COMPILE=$CROSS_COMPILE \
           LLVM=1 \
           LLVM_IAS=1 \
-          KCFLAGS="-Wno-error=implicit-function-declaration -Wno-error=format-overflow" \
-          CFLAGS_MODULE="-fno-pic" \
-          -j$(($(nproc)/2)) \
-          2>&1 | tee build.log
-        exit ${PIPESTATUS[0]}
-      env:
-        FORCE_UNSAFE_CONFIGURE: 1
-
+          KCFLAGS="-Wno-error -mno-global-merge" \
+          CFLAGS_MODULE="-fno-pic -fcf-protection=none" \
+          -j$(($(nproc)-1))
+          
     - name: Upload build log
       if: ${{ failure() }}
       uses: actions/upload-artifact@v4
