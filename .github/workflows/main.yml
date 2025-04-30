@@ -46,7 +46,7 @@ jobs:
     - name: Toolchain setup
       run: |
         mkdir -p ${{ runner.temp }}/clang
-        curl -L https://github.com/ZyCromerZ/Clang/releases/download/13.0.1-20230207-release/Clang-13.0.1-20230207.tar.gz | tar -xz -C ${{ runner.temp }}/clang
+        curl -L https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250429-release/Clang-21.0.0git-20250429.tar.gz | tar -xz -C ${{ runner.temp }}/clang
 
         mkdir -p ${{ runner.temp }}/gcc
         git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 ${{ runner.temp }}/gcc
@@ -71,7 +71,7 @@ jobs:
 
     - name: Build kernel
       run: |
-        set -x
+        set -eo pipefail
         cd $KERNEL_DIR
         make O=$BUILD_DIR \
           ARCH=$ARCH \
@@ -79,11 +79,21 @@ jobs:
           CLANG_TRIPLE=$CLANG_TRIPLE \
           CROSS_COMPILE=$CROSS_COMPILE \
           LLVM=1 \
-          KCFLAGS="-Wno-error=implicit-function-declaration" \
+          LLVM_IAS=1 \
+          KCFLAGS="-Wno-error=implicit-function-declaration -Wno-error=format-overflow" \
+          CFLAGS_MODULE="-fno-pic" \
+          -j$(($(nproc)/2)) \
           2>&1 | tee build.log
         exit ${PIPESTATUS[0]}
       env:
         FORCE_UNSAFE_CONFIGURE: 1
+
+    - name: Upload build log
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-failure-log
+        path: ${{ env.KERNEL_DIR }}/build.log
 
     - name: Verify artifacts
       run: |
